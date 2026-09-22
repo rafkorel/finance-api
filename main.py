@@ -415,3 +415,58 @@ async def delete_transfer_by_transfer_id(transfer_id: int) -> dict:
         ACCOUNTS[account_id_2_from_transfer]['balance'] -= delete_transfer['amount']
 
         return {"deleted transfer": delete_transfer}
+
+###                         Статистика
+
+@app.get("/statistics/balance")
+async def get_all_balance() -> dict:
+
+    if not ACCOUNTS:
+        raise HTTPException(
+            status_code=400,
+            detail = "Accounts is empty"
+        )
+
+    total_balance = 0
+    accounts = []
+    for account in ACCOUNTS.values():
+
+        total_balance += account['balance']
+        accounts.append(account)
+
+    return {
+        "total_balance": total_balance,
+        "accounts": accounts,
+    }
+
+# @app.get("/statistics/categories")
+# async def get_categories_by_type(type: str) -> list:
+
+#     if not CATEGORIES:
+#         raise HTTPException(
+#             status_code=400,
+#             detail = "Categories is empty"
+#         )
+
+#     if type not in ['income', 'expense']:
+#         raise HTTPException(
+#             status_code=400,
+#             detail = f"category type must be income or expense"
+#         )
+
+#     result = []
+#     total = 0
+#     for transaction in TRANSACTIONS.values():
+#         if transaction['type'] == type:
+#             name = CATEGORIES[transaction['category_id']]['name']
+#             total = sum([transaction['amount'] for transaction in TRANSACTIONS.values() if CATEGORIES[transaction['category_id']]['name'] == name])
+#             result.append({"category": name, "total": total})
+#         else:
+#             raise HTTPException(
+#                 status_code=404,
+#                 detail = f"type '{type}' not found among categories"
+#             )
+
+#     return result
+
+# закоментить все ctrl + /
