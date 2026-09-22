@@ -2,13 +2,21 @@ from fastapi import FastAPI, HTTPException
 
 app = FastAPI()
 
-ACCOUNT = {}
+ACCOUNTS = {}
 account_id = 0
+
+CATEGORIES = {}
+category_id = 0
+
+TRANSACTIONS = {}
+transaction_id = 0
+
+###                        СЧЕТА
 
 @app.post("/account")
 async def create_account(name: str, balance: float, currency: str) -> dict:
 
-    for account in ACCOUNT.values():
+    for account in ACCOUNTS.values():
         if name == account["name"]:
             raise HTTPException(
                 status_code = 400,
@@ -30,52 +38,273 @@ async def create_account(name: str, balance: float, currency: str) -> dict:
     global account_id
     account_id += 1
 
-    ACCOUNT[account_id] = {
-        "id": account_id,
+    ACCOUNTS[account_id] = {
+        "account_id": account_id,
         "name": name,
         "balance": balance,
         "currency": currency,
     }
 
-    return ACCOUNT[account_id]
+    return ACCOUNTS[account_id]
 
 @app.get("/accounts")
 async def get_accounts() -> dict:
-    if ACCOUNT == {}:
+    if not ACCOUNTS:
         raise HTTPException(
             status_code = 400,
-            detail = "Accounts not found"
+            detail = "Accounts is empty"
         )
-    return ACCOUNT
+    return ACCOUNTS
 
 @app.get("/accounts/{account_id}")
 async def get_accounts_by_account_id(account_id : int) -> dict:
 
-    if ACCOUNT == {}:
-            raise HTTPException(
-                status_code = 400,
-                detail = "Accounts not found"
-            )
-
-    if account_id not in ACCOUNT:
+    if not ACCOUNTS:
         raise HTTPException(
             status_code = 400,
-            detail = "id not found among accounts"
+            detail = "Accounts is empty"
         )
-    else:
-        return ACCOUNT[account_id]
 
-@app.delete("/accounts/{account_id}")
-async def delete_account_by_account_id(account_id: int) -> dict:
-
-    if not ACCOUNT:
-        return ACCOUNT
-    
-    if account_id not in ACCOUNT:
+    if account_id not in ACCOUNTS:
         raise HTTPException(
             status_code = 404,
             detail = "id not found among accounts"
         )
     else:
-        delete_account = ACCOUNT.pop(account_id)
+        return ACCOUNTS[account_id]
+
+@app.delete("/accounts/{account_id}")
+async def delete_account_by_account_id(account_id: int) -> dict:
+
+    if not ACCOUNTS:
+        raise HTTPException(
+            status_code = 400,
+            detail = "Accounts is empty"
+        )
+    
+    if account_id not in ACCOUNTS:
+        raise HTTPException(
+            status_code = 404,
+            detail = "Id not found among accounts"
+        )
+    else:
+        delete_account = ACCOUNTS.pop(account_id)
         return {"deleted account": delete_account}
+
+###                     КАТЕГОРИИ
+
+@app.post("/category")
+async def add_category(name: str, type: str) -> dict:
+
+    for category in CATEGORIES.values():
+        if category["name"] == name:
+            raise HTTPException(
+                status_code = 400,
+                detail = f"category '{name}' already exists"
+            )
+
+    if type not in ["income", "expense"]:
+        raise HTTPException(
+            status_code = 400,
+            detail = "category must be income or expense"
+        )
+
+    global category_id
+    category_id += 1
+
+    CATEGORIES[category_id] = {
+        "category_id": category_id,
+        "name": name,
+        "type": type,
+    }
+
+    return CATEGORIES[category_id]
+
+@app.get("/categories")
+async def get_categories() -> dict:
+    if not CATEGORIES:
+        raise HTTPException(
+            status_code = 400,
+            detail = "Categories is empty"
+        )
+    return CATEGORIES
+
+@app.get("/categories/{category_id}")
+async def get_category_by_category_id(category_id: int) -> dict:
+
+    if not CATEGORIES:
+        raise HTTPException(
+            status_code = 400,
+            detail = "Categories is empty"
+        )
+    
+    if category_id not in CATEGORIES:
+        raise HTTPException(
+            status_code = 404,
+            detail = "id not found among categories"
+        )
+    else:
+        return CATEGORIES[category_id]
+
+@app.delete("/categories/{category_id}")
+async def delete_category_by_category_id(category_id: int) -> dict:
+
+    if not CATEGORIES:
+        raise HTTPException(
+            status_code = 400,
+            detail = "Categories is empty"
+        )
+        
+    if category_id not in CATEGORIES:
+        raise HTTPException(
+            status_code = 404,
+            detail = "Id not found among categories"
+        )
+    else:
+        delete_category = CATEGORIES.pop(category_id)
+        return {"deleted category": delete_category}
+
+###                 Доходы и расходы
+
+@app.post("/transactions/income")
+async def add_income(account_id: int, category_id: int, amount: float, description: str) -> dict:
+
+    if account_id not in ACCOUNTS:
+        raise HTTPException(
+            status_code= 404,
+            detail=f"Account id: '{account_id}' not found among accounts"
+        )
+
+    if category_id not in CATEGORIES:
+        raise HTTPException(
+            status_code= 404,
+            detail=f"Category id: '{category_id}' not found among categories"
+        )
+
+    if CATEGORIES[category_id]["type"] != "income":
+        raise HTTPException(
+            status_code= 400,
+            detail=f"Category must be income"
+        )
+
+    if amount <= 0:
+        raise HTTPException(
+            status_code= 400,
+            detail="Amount must be positive"
+        )
+    
+    ACCOUNTS[account_id]['balance'] += amount
+
+    global transaction_id
+    transaction_id += 1
+
+    TRANSACTIONS[transaction_id] ={
+        "transaction_id": transaction_id,
+        "account_id": account_id,
+        "category_id": category_id,
+        "type": CATEGORIES[category_id]["type"],
+        "amount": amount,
+        "description": description,
+    }
+
+    return TRANSACTIONS[transaction_id]
+
+@app.post("/transactions/expense")
+async def add_expense(account_id: int, category_id: int, amount: float, description: str) -> dict:
+
+    if account_id not in ACCOUNTS:
+        raise HTTPException(
+            status_code= 404,
+            detail=f"Account id: '{account_id}' not found among accounts"
+        )
+
+    if category_id not in CATEGORIES:
+        raise HTTPException(
+            status_code= 404,
+            detail=f"Category id: '{category_id}' not found among categories"
+        )
+
+    if CATEGORIES[category_id]["type"] != "expense":
+        raise HTTPException(
+            status_code= 400,
+            detail=f"Category must be expense"
+        )
+
+    if amount <= 0:
+        raise HTTPException(
+            status_code= 400,
+            detail="Amount must be positive"
+        )
+
+    if ACCOUNTS[account_id]['balance'] < amount:
+        raise HTTPException(
+            status_code= 400,
+            detail="Amount must not exceed balance"
+        )
+    
+    ACCOUNTS[account_id]['balance'] -= amount
+
+    global transaction_id
+    transaction_id += 1
+
+    TRANSACTIONS[transaction_id] ={
+        "transaction_id": transaction_id,
+        "account_id": account_id,
+        "category_id": category_id,
+        "type": CATEGORIES[category_id]["type"],
+        "amount": amount,
+        "description": description,
+    }
+
+    return TRANSACTIONS[transaction_id]
+
+@app.get("/transactions")
+async def get_transactions() -> dict:
+    if not TRANSACTIONS:
+        raise HTTPException(
+            status_code = 400,
+            detail = "Transactions is empty"
+        )
+    return TRANSACTIONS
+
+@app.get("/transactions/{transaction_id}")
+async def get_transaction_by_transaction_id(transaction_id: int) -> dict:
+
+    if not TRANSACTIONS:
+        raise HTTPException(
+            status_code = 400,
+            detail = "Transactions is empty"
+        )
+    
+    if transaction_id not in TRANSACTIONS:
+        raise HTTPException(
+            status_code = 404,
+            detail = "id not found among transactions"
+        )
+    else:
+        return TRANSACTIONS[transaction_id]
+
+@app.delete("/transactions/{transaction_id}")
+async def delete_transaction_by_transaction_id(transaction_id: int) -> dict:
+
+    if not TRANSACTIONS:
+        raise HTTPException(
+            status_code = 400,
+            detail = "Transactions is empty"
+        )
+        
+    if transaction_id not in TRANSACTIONS:
+        raise HTTPException(
+            status_code = 404,
+            detail = "id not found among transactions"
+        )
+    else:
+        delete_transaction = TRANSACTIONS.pop(transaction_id)
+
+        account_id_from_transaction = delete_transaction['account_id']
+        if delete_transaction['type'] == 'income':
+            ACCOUNTS[account_id_from_transaction]['balance'] -= delete_transaction['amount']
+        else:
+            ACCOUNTS[account_id_from_transaction]['balance'] += delete_transaction['amount']
+
+        return {"deleted transaction": delete_transaction}
