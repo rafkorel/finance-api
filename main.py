@@ -11,6 +11,9 @@ category_id = 0
 TRANSACTIONS = {}
 transaction_id = 0
 
+TRANSFERS = {}
+transfer_id = 0
+
 ###                        СЧЕТА
 
 @app.post("/account")
@@ -308,3 +311,107 @@ async def delete_transaction_by_transaction_id(transaction_id: int) -> dict:
             ACCOUNTS[account_id_from_transaction]['balance'] += delete_transaction['amount']
 
         return {"deleted transaction": delete_transaction}
+
+###                     Переводы
+
+@app.post("/transfers")
+async def add_transfers(from_account_id: int, to_account_id: int, amount: float, description: str) -> dict:
+
+    if from_account_id not in ACCOUNTS:
+        raise HTTPException(
+            status_code=404,
+            detail = f"Id from: '{from_account_id}' not found among accounts"
+        )
+
+    if to_account_id not in ACCOUNTS:
+        raise HTTPException(
+            status_code=404,
+            detail = f"Id to: '{to_account_id}' not found among accounts"
+        )
+
+    if from_account_id == to_account_id:
+        raise HTTPException(
+            status_code = 400,
+            detail = 'Account must not be same'
+        )
+
+    if amount <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail = f"Amount must be positive"
+        )
+
+    if ACCOUNTS[from_account_id]['balance'] < amount:
+        raise HTTPException(
+            status_code = 400,
+            detail = 'Amount must not exceed balance from'
+        )
+
+    ACCOUNTS[from_account_id]['balance'] -= amount
+    ACCOUNTS[to_account_id]['balance'] += amount
+
+    global transfer_id
+    transfer_id += 1
+
+    TRANSFERS[transfer_id] = {
+        "transfer_id": transfer_id,
+        "from_account_id": from_account_id,
+        "to_account_id": to_account_id,
+        "amount": amount,
+        "description": description,
+    }
+
+    return TRANSFERS[transfer_id]
+
+@app.get("/transfers")
+async def get_transfers() -> dict:
+    
+    if not TRANSFERS:
+        raise HTTPException(
+            status_code = 400,
+            detail = "Transfers is empty"
+        )
+
+    return TRANSFERS
+
+@app.get("/transfers/{transfer_id}")
+async def get_transfer_by_transfer_id(transfer_id: int) -> dict:
+
+    if not TRANSFERS:
+        raise HTTPException(
+            status_code = 400,
+            detail = "Transfers is empty"
+        )
+        
+    if transfer_id not in TRANSFERS:
+        raise HTTPException(
+            status_code = 404,
+            detail = "id not found among transfers"
+        )
+    else:
+        return TRANSFERS[transfer_id]
+
+@app.delete("/transfers/{transfer_id}")
+async def delete_transfer_by_transfer_id(transfer_id: int) -> dict:
+
+    if not TRANSFERS:
+        raise HTTPException(
+            status_code = 400,
+            detail = "Transfers is empty"
+        )
+            
+    if transfer_id not in TRANSFERS:
+        raise HTTPException(
+            status_code = 404,
+            detail = "id not found among transfers"
+        )
+    else:
+        delete_transfer = TRANSFERS.pop(transfer_id)
+
+        account_id_1_from_transfer = delete_transfer['from_account_id']
+        ACCOUNTS[account_id_1_from_transfer]['balance'] += delete_transfer['amount']
+        
+        account_id_2_from_transfer = delete_transfer['to_account_id']
+        ACCOUNTS[account_id_2_from_transfer]['balance'] -= delete_transfer['amount']
+
+        return {"deleted transfer": delete_transfer}
