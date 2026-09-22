@@ -5,8 +5,8 @@ app = FastAPI()
 ACCOUNT = {}
 account_id = 0
 
-@app.get("/account")
-async def create_account(name: str, balance: float, currency: str):
+@app.post("/account")
+async def create_account(name: str, balance: float, currency: str) -> dict:
 
     for account in ACCOUNT.values():
         if name == account["name"]:
@@ -38,3 +38,44 @@ async def create_account(name: str, balance: float, currency: str):
     }
 
     return ACCOUNT[account_id]
+
+@app.get("/accounts")
+async def get_accounts() -> dict:
+    if ACCOUNT == {}:
+        raise HTTPException(
+            status_code = 400,
+            detail = "Accounts not found"
+        )
+    return ACCOUNT
+
+@app.get("/accounts/{account_id}")
+async def get_accounts_by_account_id(account_id : int) -> dict:
+
+    if ACCOUNT == {}:
+            raise HTTPException(
+                status_code = 400,
+                detail = "Accounts not found"
+            )
+
+    if account_id not in ACCOUNT:
+        raise HTTPException(
+            status_code = 400,
+            detail = "id not found among accounts"
+        )
+    else:
+        return ACCOUNT[account_id]
+
+@app.delete("/accounts/{account_id}")
+async def delete_account_by_account_id(account_id: int) -> dict:
+
+    if not ACCOUNT:
+        return ACCOUNT
+    
+    if account_id not in ACCOUNT:
+        raise HTTPException(
+            status_code = 404,
+            detail = "id not found among accounts"
+        )
+    else:
+        delete_account = ACCOUNT.pop(account_id)
+        return {"deleted account": delete_account}
