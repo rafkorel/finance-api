@@ -50,10 +50,9 @@ class CreateAccountRequest(BaseModel):
 
         return v
 
-
 ###                        СЧЕТА
 
-@app.post("/account")
+@app.post("/accounts")
 async def create_account(request: CreateAccountRequest) -> dict:
 
     for account in ACCOUNTS.values():
@@ -121,37 +120,57 @@ async def delete_account_by_account_id(account_id: int) -> dict:
     delete_account = ACCOUNTS.pop(account_id)
     return {"deleted account": delete_account}
 
+###                 ВАЛИДАЦИЯ КАТЕГОРИЙ
+
+class AddCategoryRequest(BaseModel):
+    name: str = Field(..., max_length=127)
+    category_type: str = Field(..., max_length=7)
+
+    @field_validator('name')
+    def name_not_empty(cls, v: str) -> str:
+
+        v = v.strip()
+
+        if not v:
+            raise ValueError("Category name must cannot be empty")
+
+        return v
+
+    @field_validator('category_type')
+    def category_type_on_of(cls, v: str) -> str:
+
+        if v not in ["income", "expense"]:
+            raise ValueError("category must be income or expense")
+
+        return v
+
+
 ###                     КАТЕГОРИИ
 
-@app.post("/category")
-async def add_category(name: str, category_type: str) -> dict:
+@app.post("/categories")
+async def add_category(request: AddCategoryRequest) -> dict:
 
     for category in CATEGORIES.values():
-        if category["name"] == name:
+        if category["name"] == request.name:
             raise HTTPException(
                 status_code = 400,
-                detail = f"category '{name}' already exists"
+                detail = f"category '{request.name}' already exists"
             )
-
-    if category_type not in ["income", "expense"]:
-        raise HTTPException(
-            status_code = 400,
-            detail = "category must be income or expense"
-        )
 
     global category_id
     category_id += 1
 
     CATEGORIES[category_id] = {
         "category_id": category_id,
-        "name": name,
-        "type": category_type,
+        "name": request.name,
+        "type": request.category_type,
     }
 
     return CATEGORIES[category_id]
 
 @app.get("/categories")
 async def get_categories() -> dict:
+
     if not CATEGORIES:
         raise HTTPException(
             status_code = 400,
@@ -173,8 +192,8 @@ async def get_category_by_category_id(category_id: int) -> dict:
             status_code = 404,
             detail = "id not found among categories"
         )
-    else:
-        return CATEGORIES[category_id]
+
+    return CATEGORIES[category_id]
 
 @app.delete("/categories/{category_id}")
 async def delete_category_by_category_id(category_id: int) -> dict:
@@ -190,9 +209,9 @@ async def delete_category_by_category_id(category_id: int) -> dict:
             status_code = 404,
             detail = "Id not found among categories"
         )
-    else:
-        delete_category = CATEGORIES.pop(category_id)
-        return {"deleted category": delete_category}
+
+    delete_category = CATEGORIES.pop(category_id)
+    return {"deleted category": delete_category}
 
 ###                 Доходы и расходы
 
