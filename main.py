@@ -29,13 +29,13 @@ async def create_account(name: str, balance: float, currency: str) -> dict:
     if balance < 0:
         raise HTTPException(
             status_code = 400,
-            detail = f"Ballance cannot be nagative"
+            detail = "Ballance cannot be nagative"
         )
 
     if currency not in ["RUB", "USD", "EUR"]:
         raise HTTPException(
             status_code = 400,
-            detail = f"Currency must be one of RUB, USD, EUR"
+            detail = "Currency must be one of RUB, USD, EUR"
         )
 
     global account_id
@@ -97,7 +97,7 @@ async def delete_account_by_account_id(account_id: int) -> dict:
 ###                     КАТЕГОРИИ
 
 @app.post("/category")
-async def add_category(name: str, type: str) -> dict:
+async def add_category(name: str, category_type: str) -> dict:
 
     for category in CATEGORIES.values():
         if category["name"] == name:
@@ -106,7 +106,7 @@ async def add_category(name: str, type: str) -> dict:
                 detail = f"category '{name}' already exists"
             )
 
-    if type not in ["income", "expense"]:
+    if category_type not in ["income", "expense"]:
         raise HTTPException(
             status_code = 400,
             detail = "category must be income or expense"
@@ -118,7 +118,7 @@ async def add_category(name: str, type: str) -> dict:
     CATEGORIES[category_id] = {
         "category_id": category_id,
         "name": name,
-        "type": type,
+        "type": category_type,
     }
 
     return CATEGORIES[category_id]
@@ -187,7 +187,7 @@ async def add_income(account_id: int, category_id: int, amount: float, descripti
     if CATEGORIES[category_id]["type"] != "income":
         raise HTTPException(
             status_code= 400,
-            detail=f"Category must be income"
+            detail="Category must be income"
         )
 
     if amount <= 0:
@@ -230,7 +230,7 @@ async def add_expense(account_id: int, category_id: int, amount: float, descript
     if CATEGORIES[category_id]["type"] != "expense":
         raise HTTPException(
             status_code= 400,
-            detail=f"Category must be expense"
+            detail="Category must be expense"
         )
 
     if amount <= 0:
@@ -338,7 +338,7 @@ async def add_transfers(from_account_id: int, to_account_id: int, amount: float,
     if amount <= 0:
         raise HTTPException(
             status_code=400,
-            detail = f"Amount must be positive"
+            detail = "Amount must be positive"
         )
 
     if ACCOUNTS[from_account_id]['balance'] < amount:
@@ -439,34 +439,51 @@ async def get_all_balance() -> dict:
         "accounts": accounts,
     }
 
-# @app.get("/statistics/categories")
-# async def get_categories_by_type(type: str) -> list:
+@app.get("/statistics/categories")
+async def get_categories_by_type(category_type: str) -> list:
 
-#     if not CATEGORIES:
-#         raise HTTPException(
-#             status_code=400,
-#             detail = "Categories is empty"
-#         )
+    if not CATEGORIES:
+        raise HTTPException(
+            status_code=400,
+            detail = "Categories is empty"
+        )
 
-#     if type not in ['income', 'expense']:
-#         raise HTTPException(
-#             status_code=400,
-#             detail = f"category type must be income or expense"
-#         )
+    if category_type not in ['income', 'expense']:
+        raise HTTPException(
+            status_code=400,
+            detail = "category type must be income or expense"
+        )
 
-#     result = []
-#     total = 0
-#     for transaction in TRANSACTIONS.values():
-#         if transaction['type'] == type:
-#             name = CATEGORIES[transaction['category_id']]['name']
-#             total = sum([transaction['amount'] for transaction in TRANSACTIONS.values() if CATEGORIES[transaction['category_id']]['name'] == name])
-#             result.append({"category": name, "total": total})
-#         else:
-#             raise HTTPException(
-#                 status_code=404,
-#                 detail = f"type '{type}' not found among categories"
-#             )
+    if CATEGORIES and not TRANSACTIONS:
+        raise HTTPException(
+            status_code=400,
+            detail = "Transaction must be not empty if categories isn`t empty"
+        )
 
-#     return result
+    if not any(transaction for transaction in TRANSACTIONS.values() if transaction['type'] == category_type):
+        raise HTTPException(
+            status_code=404,
+            detail = f"type '{category_type}' not found among categories"
+        )
 
-# закоментить все ctrl + /
+    result = []
+    for transaction in TRANSACTIONS.values():
+        if transaction['type'] == category_type:
+
+            found = False
+            name = CATEGORIES[transaction['category_id']]['name']
+
+            for dicts in result:
+                if name == dicts['category']:
+
+                    dicts['total'] += transaction['amount']
+                    found = True
+
+            if not found:
+
+                result.append({
+                    'category': name,
+                    'total': transaction['amount']
+                })
+
+    return result
