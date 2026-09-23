@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException
 
+from datetime import datetime
+
 app = FastAPI()
 
 ACCOUNTS = {}
@@ -170,7 +172,7 @@ async def delete_category_by_category_id(category_id: int) -> dict:
 ###                 Доходы и расходы
 
 @app.post("/transactions/income")
-async def add_income(account_id: int, category_id: int, amount: float, description: str) -> dict:
+async def add_income(account_id: int, category_id: int, amount: float, description: str, date: str) -> dict:
 
     if account_id not in ACCOUNTS:
         raise HTTPException(
@@ -208,12 +210,13 @@ async def add_income(account_id: int, category_id: int, amount: float, descripti
         "type": CATEGORIES[category_id]["type"],
         "amount": amount,
         "description": description,
+        "date": date,
     }
 
     return TRANSACTIONS[transaction_id]
 
 @app.post("/transactions/expense")
-async def add_expense(account_id: int, category_id: int, amount: float, description: str) -> dict:
+async def add_expense(account_id: int, category_id: int, amount: float, description: str, date: str) -> dict:
 
     if account_id not in ACCOUNTS:
         raise HTTPException(
@@ -257,6 +260,7 @@ async def add_expense(account_id: int, category_id: int, amount: float, descript
         "type": CATEGORIES[category_id]["type"],
         "amount": amount,
         "description": description,
+        "date": date,
     }
 
     return TRANSACTIONS[transaction_id]
@@ -485,5 +489,31 @@ async def get_categories_by_type(category_type: str) -> list:
                     'category': name,
                     'total': transaction['amount']
                 })
+
+    return result
+
+@app.get("/statistics/period")
+async def get_transartions_by_period(date_from: str, date_to: str) -> list:
+
+    date_from_now = datetime.strptime(date_from, "%Y-%m-%d") 
+    date_to_now = datetime.strptime(date_to, "%Y-%m-%d") 
+
+    if date_from_now > date_to_now:
+        raise HTTPException(
+            status_code=400,
+            detail=f"'{date_from_now}' cannot be later than  '{date_to_now}'"
+        )
+
+    result = []
+    found = False
+    for transaction in TRANSACTIONS.values():
+        if date_from_now<=datetime.strptime(transaction['date'], "%Y-%m-%d")<=date_to_now:
+            result.append(transaction)
+            found = True
+    if not found:
+        raise HTTPException(
+            status_code=400,
+            detail="There are no transactions in this range"
+        )
 
     return result
