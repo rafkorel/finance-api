@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field, field_validator
 
 from datetime import datetime
 
@@ -16,49 +17,73 @@ transaction_id = 0
 TRANSFERS = {}
 transfer_id = 0
 
+###                   ВАЛИДАЦИЯ СЧЕТА
+
+class CreateAccountRequest(BaseModel):
+    name: str = Field(..., max_length=127)
+    balance: float
+    currency: str = Field(..., max_length=3)
+
+    @field_validator('name')
+    def name_not_empty(cls, v: str) -> str:
+
+        v = v.strip()
+
+        if not v:
+            raise ValueError("Account name must cannot be empty")
+
+        return v
+
+    @field_validator('balance')
+    def balance_not_negative(cls, v: float) -> float:
+
+        if v < 0:
+            raise ValueError("Initial balance cannot be negative")
+                
+        return v
+
+    @field_validator('currency')
+    def currency_on_of(cls, v: str) -> str:
+
+        if v not in ["RUB", "EUR", "USD"]:
+            raise ValueError("Currency must be one of RUB, USD, EUR")
+
+        return v
+
+
 ###                        СЧЕТА
 
 @app.post("/account")
-async def create_account(name: str, balance: float, currency: str) -> dict:
+async def create_account(request: CreateAccountRequest) -> dict:
 
     for account in ACCOUNTS.values():
-        if name == account["name"]:
+        if request.name == account["name"]:
             raise HTTPException(
                 status_code = 400,
-                detail = f"Account with name '{name}' alredy exists"
+                detail = f"Account with name '{request.name}' alredy exists"
             )
-    
-    if balance < 0:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Ballance cannot be nagative"
-        )
-
-    if currency not in ["RUB", "USD", "EUR"]:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Currency must be one of RUB, USD, EUR"
-        )
 
     global account_id
     account_id += 1
 
     ACCOUNTS[account_id] = {
         "account_id": account_id,
-        "name": name,
-        "balance": balance,
-        "currency": currency,
+        "name": request.name,
+        "balance": request.balance,
+        "currency": request.currency,
     }
 
     return ACCOUNTS[account_id]
 
 @app.get("/accounts")
 async def get_accounts() -> dict:
+    
     if not ACCOUNTS:
         raise HTTPException(
             status_code = 400,
             detail = "Accounts is empty"
         )
+    
     return ACCOUNTS
 
 @app.get("/accounts/{account_id}")
@@ -75,8 +100,8 @@ async def get_accounts_by_account_id(account_id : int) -> dict:
             status_code = 404,
             detail = "id not found among accounts"
         )
-    else:
-        return ACCOUNTS[account_id]
+
+    return ACCOUNTS[account_id]
 
 @app.delete("/accounts/{account_id}")
 async def delete_account_by_account_id(account_id: int) -> dict:
@@ -92,9 +117,9 @@ async def delete_account_by_account_id(account_id: int) -> dict:
             status_code = 404,
             detail = "Id not found among accounts"
         )
-    else:
-        delete_account = ACCOUNTS.pop(account_id)
-        return {"deleted account": delete_account}
+    
+    delete_account = ACCOUNTS.pop(account_id)
+    return {"deleted account": delete_account}
 
 ###                     КАТЕГОРИИ
 
