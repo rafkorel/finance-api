@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from fastapi import FastAPI, HTTPException, Query
+from pydantic import BaseModel, Field, field_validator, model_validator
 
-from datetime import datetime
+from datetime import date
 
 app = FastAPI()
 
@@ -30,7 +30,7 @@ class CreateAccountRequest(BaseModel):
         v = v.strip()
 
         if not v:
-            raise ValueError("Account name must cannot be empty")
+            raise ValueError("Account name cannot be empty")
 
         return v
 
@@ -43,7 +43,7 @@ class CreateAccountRequest(BaseModel):
         return v
 
     @field_validator('currency')
-    def currency_on_of(cls, v: str) -> str:
+    def validate_currency(cls, v: str) -> str:
 
         if v not in ["RUB", "EUR", "USD"]:
             raise ValueError("Currency must be one of RUB, USD, EUR")
@@ -52,14 +52,14 @@ class CreateAccountRequest(BaseModel):
 
 ###                        СЧЕТА
 
-@app.post("/accounts")
+@app.post("/accounts", status_code=201)
 async def create_account(request: CreateAccountRequest) -> dict:
 
     for account in ACCOUNTS.values():
         if request.name == account["name"]:
             raise HTTPException(
-                status_code = 400,
-                detail = f"Account with name '{request.name}' alredy exists"
+                status_code = 409,
+                detail = f"Account with name '{request.name}' already exists"
             )
 
     global account_id
@@ -75,50 +75,50 @@ async def create_account(request: CreateAccountRequest) -> dict:
     return ACCOUNTS[account_id]
 
 @app.get("/accounts")
-async def get_accounts() -> dict:
-    
-    if not ACCOUNTS:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Accounts is empty"
-        )
-    
+async def get_accounts() -> dict:    
     return ACCOUNTS
 
 @app.get("/accounts/{account_id}")
-async def get_accounts_by_account_id(account_id : int) -> dict:
-
-    if not ACCOUNTS:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Accounts is empty"
-        )
+async def get_account(account_id : int) -> dict:
 
     if account_id not in ACCOUNTS:
         raise HTTPException(
             status_code = 404,
-            detail = "id not found among accounts"
+            detail = f"Account '{account_id}' not found"
         )
 
     return ACCOUNTS[account_id]
 
 @app.delete("/accounts/{account_id}")
-async def delete_account_by_account_id(account_id: int) -> dict:
-
-    if not ACCOUNTS:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Accounts is empty"
-        )
+async def delete_account(account_id: int) -> dict:
     
     if account_id not in ACCOUNTS:
         raise HTTPException(
             status_code = 404,
-            detail = "Id not found among accounts"
+            detail = f"Account '{account_id}' not found"
         )
+
+
+    for transaction in TRANSACTIONS.values():
+        if transaction["account_id"] == account_id:
+            raise HTTPException(
+                status_code=409,
+                detail = f"Account '{account_id}' cannot be deleted because it is used in a transaction",
+            )
+
+    for transfer in TRANSFERS.values():
+        if (
+            transfer['from_account_id'] == account_id
+            or transfer['to_account_id'] == account_id
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail = f"Account '{account_id}' cannot be deleted because it is used in a transfer",
+            )
+
     
-    delete_account = ACCOUNTS.pop(account_id)
-    return {"deleted account": delete_account}
+    deleted_account = ACCOUNTS.pop(account_id)
+    return {"deleted account": deleted_account}
 
 ###                 ВАЛИДАЦИЯ КАТЕГОРИЙ
 
@@ -132,29 +132,29 @@ class AddCategoryRequest(BaseModel):
         v = v.strip()
 
         if not v:
-            raise ValueError("Category name must cannot be empty")
+            raise ValueError("Category name cannot be empty")
 
         return v
 
     @field_validator('category_type')
-    def category_type_on_of(cls, v: str) -> str:
+    def validate_category_type(cls, v: str) -> str:
 
         if v not in ["income", "expense"]:
-            raise ValueError("category must be income or expense")
+            raise ValueError("Category type must be either 'income' or 'expense'")
 
         return v
 
 
 ###                     КАТЕГОРИИ
 
-@app.post("/categories")
-async def add_category(request: AddCategoryRequest) -> dict:
+@app.post("/categories", status_code=201)
+async def create_category(request: AddCategoryRequest) -> dict:
 
     for category in CATEGORIES.values():
         if category["name"] == request.name:
             raise HTTPException(
-                status_code = 400,
-                detail = f"category '{request.name}' already exists"
+                status_code = 409,
+                detail = f"Category with name '{request.name}' already exists"
             )
 
     global category_id
@@ -170,304 +170,282 @@ async def add_category(request: AddCategoryRequest) -> dict:
 
 @app.get("/categories")
 async def get_categories() -> dict:
-
-    if not CATEGORIES:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Categories is empty"
-        )
     return CATEGORIES
 
 @app.get("/categories/{category_id}")
-async def get_category_by_category_id(category_id: int) -> dict:
-
-    if not CATEGORIES:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Categories is empty"
-        )
+async def get_category(category_id: int) -> dict:
     
     if category_id not in CATEGORIES:
         raise HTTPException(
             status_code = 404,
-            detail = "id not found among categories"
+            detail = f"Category '{category_id}' not found"
         )
 
     return CATEGORIES[category_id]
 
 @app.delete("/categories/{category_id}")
-async def delete_category_by_category_id(category_id: int) -> dict:
-
-    if not CATEGORIES:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Categories is empty"
-        )
+async def delete_category(category_id: int) -> dict:
         
     if category_id not in CATEGORIES:
         raise HTTPException(
             status_code = 404,
-            detail = "Id not found among categories"
+            detail = f"Category '{category_id}' not found"
         )
 
-    delete_category = CATEGORIES.pop(category_id)
-    return {"deleted category": delete_category}
+    for transaction in TRANSACTIONS.values():
+        if transaction['category_id'] == category_id:
+            raise HTTPException(
+                status_code=409,
+                detail = f"Category '{category_id}' cannot be deleted because it is used in a transaction",
+            )
 
+    deleted_category = CATEGORIES.pop(category_id)
+    return {"deleted category": deleted_category}
+
+###             ВАЛИДАЦИЯ ДОХОДОВ И РАСХОДОВ
+
+class AddTransactionRequest(BaseModel):
+    account_id: int
+    category_id: int
+    amount: float
+    description: str | None = None
+    date: date
+
+    @field_validator('amount')
+    def validate_amount(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError('Amount must be positive')
+        return v
 ###                 Доходы и расходы
 
-@app.post("/transactions/income")
-async def add_income(account_id: int, category_id: int, amount: float, description: str, date: str) -> dict:
+@app.post("/transactions/income", status_code=201)
+async def create_income(request: AddTransactionRequest) -> dict:
 
-    if account_id not in ACCOUNTS:
+    if request.account_id not in ACCOUNTS:
         raise HTTPException(
             status_code= 404,
-            detail=f"Account id: '{account_id}' not found among accounts"
+            detail=f"Account id: '{request.account_id}' not found among accounts"
         )
 
-    if category_id not in CATEGORIES:
+    if request.category_id not in CATEGORIES:
         raise HTTPException(
             status_code= 404,
-            detail=f"Category id: '{category_id}' not found among categories"
+            detail=f"Category id: '{request.category_id}' not found among categories"
         )
 
-    if CATEGORIES[category_id]["type"] != "income":
+    if CATEGORIES[request.category_id]["type"] != "income":
         raise HTTPException(
             status_code= 400,
             detail="Category must be income"
         )
-
-    if amount <= 0:
-        raise HTTPException(
-            status_code= 400,
-            detail="Amount must be positive"
-        )
     
-    ACCOUNTS[account_id]['balance'] += amount
+    ACCOUNTS[request.account_id]['balance'] += request.amount
 
     global transaction_id
     transaction_id += 1
 
     TRANSACTIONS[transaction_id] ={
         "transaction_id": transaction_id,
-        "account_id": account_id,
-        "category_id": category_id,
-        "type": CATEGORIES[category_id]["type"],
-        "amount": amount,
-        "description": description,
-        "date": date,
+        "account_id": request.account_id,
+        "category_id": request.category_id,
+        "type": CATEGORIES[request.category_id]["type"],
+        "amount": request.amount,
+        "description": request.description,
+        "date": request.date,
     }
 
     return TRANSACTIONS[transaction_id]
 
-@app.post("/transactions/expense")
-async def add_expense(account_id: int, category_id: int, amount: float, description: str, date: str) -> dict:
+@app.post("/transactions/expense", status_code=201)
+async def create_expense(request: AddTransactionRequest) -> dict:
 
-    if account_id not in ACCOUNTS:
+    if request.account_id not in ACCOUNTS:
         raise HTTPException(
             status_code= 404,
-            detail=f"Account id: '{account_id}' not found among accounts"
+            detail=f"Account id: '{request.account_id}' not found among accounts"
         )
 
-    if category_id not in CATEGORIES:
+    if request.category_id not in CATEGORIES:
         raise HTTPException(
             status_code= 404,
-            detail=f"Category id: '{category_id}' not found among categories"
+            detail=f"Category id: '{request.category_id}' not found among categories"
         )
 
-    if CATEGORIES[category_id]["type"] != "expense":
+    if CATEGORIES[request.category_id]["type"] != "expense":
         raise HTTPException(
             status_code= 400,
             detail="Category must be expense"
         )
 
-    if amount <= 0:
+    if ACCOUNTS[request.account_id]['balance'] < request.amount:
         raise HTTPException(
             status_code= 400,
-            detail="Amount must be positive"
-        )
-
-    if ACCOUNTS[account_id]['balance'] < amount:
-        raise HTTPException(
-            status_code= 400,
-            detail="Amount must not exceed balance"
+            detail="Expense amount cannot exceed the account balance"
         )
     
-    ACCOUNTS[account_id]['balance'] -= amount
+    ACCOUNTS[request.account_id]['balance'] -= request.amount
 
     global transaction_id
     transaction_id += 1
 
     TRANSACTIONS[transaction_id] ={
         "transaction_id": transaction_id,
-        "account_id": account_id,
-        "category_id": category_id,
-        "type": CATEGORIES[category_id]["type"],
-        "amount": amount,
-        "description": description,
-        "date": date,
+        "account_id": request.account_id,
+        "category_id": request.category_id,
+        "type": CATEGORIES[request.category_id]["type"],
+        "amount": request.amount,
+        "description": request.description,
+        "date": request.date,
     }
 
     return TRANSACTIONS[transaction_id]
 
 @app.get("/transactions")
 async def get_transactions() -> dict:
-    if not TRANSACTIONS:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Transactions is empty"
-        )
     return TRANSACTIONS
 
 @app.get("/transactions/{transaction_id}")
-async def get_transaction_by_transaction_id(transaction_id: int) -> dict:
-
-    if not TRANSACTIONS:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Transactions is empty"
-        )
+async def get_transaction(transaction_id: int) -> dict:
     
     if transaction_id not in TRANSACTIONS:
         raise HTTPException(
             status_code = 404,
-            detail = "id not found among transactions"
+            detail = f"Transaction '{transaction_id}' not found"
         )
-    else:
-        return TRANSACTIONS[transaction_id]
+    
+    return TRANSACTIONS[transaction_id]
 
 @app.delete("/transactions/{transaction_id}")
-async def delete_transaction_by_transaction_id(transaction_id: int) -> dict:
-
-    if not TRANSACTIONS:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Transactions is empty"
-        )
+async def delete_transaction(transaction_id: int) -> dict:
         
     if transaction_id not in TRANSACTIONS:
         raise HTTPException(
             status_code = 404,
-            detail = "id not found among transactions"
+            detail = f"Transaction '{transaction_id}' not found"
         )
+
+    if (
+        TRANSACTIONS[transaction_id]['type'] == 'income' 
+        and ACCOUNTS[TRANSACTIONS[transaction_id]['account_id']]['balance'] < TRANSACTIONS[transaction_id]['amount']
+    ):
+        raise HTTPException(
+            status_code= 409,
+            detail= f"Transaction '{transaction_id}' cannot be deleted because it would make the account balance negative"
+        )
+    
+    deleted_transaction = TRANSACTIONS.pop(transaction_id)
+
+    account_id_from_transaction = deleted_transaction['account_id']
+    if deleted_transaction['type'] == 'income':
+        ACCOUNTS[account_id_from_transaction]['balance'] -= deleted_transaction['amount']
     else:
-        delete_transaction = TRANSACTIONS.pop(transaction_id)
+        ACCOUNTS[account_id_from_transaction]['balance'] += deleted_transaction['amount']
 
-        account_id_from_transaction = delete_transaction['account_id']
-        if delete_transaction['type'] == 'income':
-            ACCOUNTS[account_id_from_transaction]['balance'] -= delete_transaction['amount']
-        else:
-            ACCOUNTS[account_id_from_transaction]['balance'] += delete_transaction['amount']
+    return {"deleted transaction": deleted_transaction}
 
-        return {"deleted transaction": delete_transaction}
+###                 ВАЛИДАЦИЯ ПЕРЕВОДОВ
 
-###                     Переводы
+class AddTransferRequest(BaseModel):
+    from_account_id : int
+    to_account_id: int
+    amount: float
+    description: str | None = None
 
-@app.post("/transfers")
-async def add_transfers(from_account_id: int, to_account_id: int, amount: float, description: str) -> dict:
+    @model_validator(mode="after")
+    def accounts_must_be_different(self):
+        if self.from_account_id == self.to_account_id:
+            raise ValueError('Source and destination accounts must be different')
+        return self
 
-    if from_account_id not in ACCOUNTS:
+    @field_validator('amount')
+    def validate_amount(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError('Amount must be positive')
+        return v
+
+###                     ПЕРЕВОДЫ
+
+@app.post("/transfers", status_code=201)
+async def create_transfer(request: AddTransferRequest) -> dict:
+
+    if request.from_account_id not in ACCOUNTS:
         raise HTTPException(
             status_code=404,
-            detail = f"Id from: '{from_account_id}' not found among accounts"
+            detail = f"Id from: '{request.from_account_id}' not found among accounts"
         )
 
-    if to_account_id not in ACCOUNTS:
+    if request.to_account_id not in ACCOUNTS:
         raise HTTPException(
             status_code=404,
-            detail = f"Id to: '{to_account_id}' not found among accounts"
+            detail = f"Id to: '{request.to_account_id}' not found among accounts"
         )
 
-    if from_account_id == to_account_id:
+    if ACCOUNTS[request.from_account_id]['balance'] < request.amount:
         raise HTTPException(
             status_code = 400,
-            detail = 'Account must not be same'
+            detail = 'Transfer amount cannot exceed the source account balance'
         )
 
-    if amount <= 0:
-        raise HTTPException(
-            status_code=400,
-            detail = "Amount must be positive"
-        )
-
-    if ACCOUNTS[from_account_id]['balance'] < amount:
-        raise HTTPException(
-            status_code = 400,
-            detail = 'Amount must not exceed balance from'
-        )
-
-    ACCOUNTS[from_account_id]['balance'] -= amount
-    ACCOUNTS[to_account_id]['balance'] += amount
+    ACCOUNTS[request.from_account_id]['balance'] -= request.amount
+    ACCOUNTS[request.to_account_id]['balance'] += request.amount
 
     global transfer_id
     transfer_id += 1
 
     TRANSFERS[transfer_id] = {
         "transfer_id": transfer_id,
-        "from_account_id": from_account_id,
-        "to_account_id": to_account_id,
-        "amount": amount,
-        "description": description,
+        "from_account_id": request.from_account_id,
+        "to_account_id": request.to_account_id,
+        "amount": request.amount,
+        "description": request.description,
     }
 
     return TRANSFERS[transfer_id]
 
 @app.get("/transfers")
 async def get_transfers() -> dict:
-    
-    if not TRANSFERS:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Transfers is empty"
-        )
-
     return TRANSFERS
 
 @app.get("/transfers/{transfer_id}")
-async def get_transfer_by_transfer_id(transfer_id: int) -> dict:
-
-    if not TRANSFERS:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Transfers is empty"
-        )
+async def get_transfer(transfer_id: int) -> dict:
         
     if transfer_id not in TRANSFERS:
         raise HTTPException(
             status_code = 404,
-            detail = "id not found among transfers"
+            detail = f"Transfer '{transfer_id}' not found"
         )
-    else:
-        return TRANSFERS[transfer_id]
+
+    return TRANSFERS[transfer_id]
 
 @app.delete("/transfers/{transfer_id}")
-async def delete_transfer_by_transfer_id(transfer_id: int) -> dict:
-
-    if not TRANSFERS:
-        raise HTTPException(
-            status_code = 400,
-            detail = "Transfers is empty"
-        )
+async def delete_transfer(transfer_id: int) -> dict:
             
     if transfer_id not in TRANSFERS:
         raise HTTPException(
             status_code = 404,
-            detail = "id not found among transfers"
+            detail = f"Transfer '{transfer_id}' not found"
         )
-    else:
-        delete_transfer = TRANSFERS.pop(transfer_id)
 
-        account_id_1_from_transfer = delete_transfer['from_account_id']
-        ACCOUNTS[account_id_1_from_transfer]['balance'] += delete_transfer['amount']
-        
-        account_id_2_from_transfer = delete_transfer['to_account_id']
-        ACCOUNTS[account_id_2_from_transfer]['balance'] -= delete_transfer['amount']
+    if ACCOUNTS[TRANSFERS[transfer_id]['to_account_id']]['balance'] < TRANSFERS[transfer_id]['amount']:
+        raise HTTPException(
+            status_code=409,
+            detail = f"Transfer '{transfer_id}' cannot be deleted because the recipient account has insufficient balance",
+        )
 
-        return {"deleted transfer": delete_transfer}
+    deleted_transfer = TRANSFERS.pop(transfer_id)
 
-###                         Статистика
+    account_id_1_from_transfer = deleted_transfer['from_account_id']
+    ACCOUNTS[account_id_1_from_transfer]['balance'] += deleted_transfer['amount']
+    
+    account_id_2_from_transfer = deleted_transfer['to_account_id']
+    ACCOUNTS[account_id_2_from_transfer]['balance'] -= deleted_transfer['amount']
+
+    return {"deleted transfer": deleted_transfer}
+
+###                         СТАТИСТИКА
 
 @app.get("/statistics/balance")
-async def get_all_balance() -> dict:
+async def get_balance_statistics() -> dict:
 
     if not ACCOUNTS:
         raise HTTPException(
@@ -488,7 +466,14 @@ async def get_all_balance() -> dict:
     }
 
 @app.get("/statistics/categories")
-async def get_categories_by_type(category_type: str) -> list:
+async def get_categories_statistics(category_type: str = Query(..., max_length=7)) -> list:
+
+
+    if category_type not in ['income', 'expense']:
+        raise HTTPException(
+            status_code = 400,
+            detail = "category type must be income or expense",
+        )
 
     if not CATEGORIES:
         raise HTTPException(
@@ -496,19 +481,16 @@ async def get_categories_by_type(category_type: str) -> list:
             detail = "Categories is empty"
         )
 
-    if category_type not in ['income', 'expense']:
+    if not TRANSACTIONS:
         raise HTTPException(
             status_code=400,
-            detail = "category type must be income or expense"
+            detail = "No transactions found"
         )
 
-    if CATEGORIES and not TRANSACTIONS:
-        raise HTTPException(
-            status_code=400,
-            detail = "Transaction must be not empty if categories isn`t empty"
-        )
-
-    if not any(transaction for transaction in TRANSACTIONS.values() if transaction['type'] == category_type):
+    if not any(
+    transaction['type'] == category_type
+    for transaction in TRANSACTIONS.values()
+    ):
         raise HTTPException(
             status_code=404,
             detail = f"type '{category_type}' not found among categories"
@@ -537,27 +519,17 @@ async def get_categories_by_type(category_type: str) -> list:
     return result
 
 @app.get("/statistics/period")
-async def get_transartions_by_period(date_from: str, date_to: str) -> list:
+async def get_transactions_statistics_by_period(date_from: date, date_to: date) -> list:
 
-    date_from_now = datetime.strptime(date_from, "%Y-%m-%d") 
-    date_to_now = datetime.strptime(date_to, "%Y-%m-%d") 
-
-    if date_from_now > date_to_now:
+    if date_from > date_to:
         raise HTTPException(
-            status_code=400,
-            detail=f"'{date_from_now}' cannot be later than  '{date_to_now}'"
+            status_code= 400,
+            detail = f"date_from cannot be later than date_to",
         )
 
     result = []
-    found = False
     for transaction in TRANSACTIONS.values():
-        if date_from_now<=datetime.strptime(transaction['date'], "%Y-%m-%d")<=date_to_now:
+        if date_from <= transaction['date'] <= date_to:
             result.append(transaction)
-            found = True
-    if not found:
-        raise HTTPException(
-            status_code=400,
-            detail="There are no transactions in this range"
-        )
 
     return result
