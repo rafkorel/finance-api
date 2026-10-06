@@ -1,7 +1,9 @@
-CATEGORIES = {}
+from app.schemas.categories import Category
+
+CATEGORIES: dict[int, Category]= {}
 category_id = 0
 
-def create_category(name: str, category_type: str):
+def create_category(name: str, category_type: str) -> Category:
 
     global category_id
     category_id += 1
@@ -23,7 +25,7 @@ def is_category_exists(name: str) -> bool:
     return True
 
 
-def get_all_categories() -> dict:
+def get_all_categories() -> dict[int, Category]:
     return CATEGORIES.copy()
 
 
@@ -34,11 +36,11 @@ def is_category_id_exists(category_id : int) -> bool:
     return True
 
 
-def get_category_by_category_id(category_id : int) -> dict:
-    return CATEGORIES[category_id]
+def get_category_by_category_id(category_id : int) -> Category | None:
+    return CATEGORIES.get(category_id)
 
 
-def delete_category(category_id: int) -> dict:
+def delete_category(category_id: int) -> dict[str, Category]:
     
     deleted_category = CATEGORIES.pop(category_id)
     return {"deleted category": deleted_category}

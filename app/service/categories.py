@@ -1,11 +1,11 @@
 from fastapi import HTTPException
 
-from app.schemas.categories import AddCategoryRequest
+from app.schemas.categories import AddCategoryRequest, Category
 
 from app.repository import categories as categories_repository
 from app.repository import transactions as transactions_repository
 
-async def create_category(request: AddCategoryRequest) -> dict:
+async def create_category(request: AddCategoryRequest) -> Category:
 
     if not categories_repository.is_category_exists(request.name):
         raise HTTPException(
@@ -19,22 +19,24 @@ async def create_category(request: AddCategoryRequest) -> dict:
     )
 
 
-async def get_categories() -> dict:
+async def get_categories() -> dict[int, Category]:
     return categories_repository.get_all_categories()
 
 
-async def get_category(category_id: int) -> dict:
-    
-    if not categories_repository.is_category_id_exists(category_id):
+async def get_category(category_id: int) -> Category:
+
+    category = categories_repository.get_category_by_category_id(category_id)
+
+    if category is None:
         raise HTTPException(
             status_code = 404,
             detail = f"Category '{category_id}' not found"
         )
 
-    return categories_repository.get_category_by_category_id(category_id)
+    return category
 
 
-async def delete_category(category_id: int) -> dict:
+async def delete_category(category_id: int) -> dict[str, Category]:
         
     if not categories_repository.is_category_id_exists(category_id):
         raise HTTPException(

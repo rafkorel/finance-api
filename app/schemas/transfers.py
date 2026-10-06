@@ -1,5 +1,13 @@
 from pydantic import BaseModel, field_validator, model_validator
 
+from typing import TypedDict
+
+class Transfer(TypedDict):
+    transfer_id: int
+    from_account_id: int
+    to_account_id: int
+    amount: float
+    description: str | None
 
 class AddTransferRequest(BaseModel):
     from_account_id : int

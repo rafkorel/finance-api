@@ -1,11 +1,11 @@
 from fastapi import HTTPException
 
-from app.schemas.transfers import AddTransferRequest
+from app.schemas.transfers import AddTransferRequest, Transfer
 
 from app.repository import accounts as accounts_repository
 from app.repository import transfers as transfers_repository
 
-async def create_transfer(request: AddTransferRequest) -> dict:
+async def create_transfer(request: AddTransferRequest) -> Transfer:
 
     if not accounts_repository.is_account_id_exists(request.from_account_id):
         raise HTTPException(
@@ -36,30 +36,34 @@ async def create_transfer(request: AddTransferRequest) -> dict:
     )
 
 
-async def get_transfers() -> dict:
+async def get_transfers() -> dict[int, Transfer]:
     return transfers_repository.get_all_transfers()
 
 
-async def get_transfer(transfer_id: int) -> dict:
+async def get_transfer(transfer_id: int) -> Transfer:
+
+    transfer = transfers_repository.get_transfer_by_transfer_id(transfer_id)
         
-    if not transfers_repository.is_transfer_id_exists(transfer_id):
+    if transfer is None:
         raise HTTPException(
             status_code = 404,
             detail = f"Transfer '{transfer_id}' not found"
         )
 
-    return transfers_repository.get_transfer_by_transfer_id(transfer_id)
+    return transfer
 
 
-async def delete_transfer(transfer_id: int) -> dict:
-            
-    if not transfers_repository.is_transfer_id_exists(transfer_id):
+async def delete_transfer(transfer_id: int) -> dict[str, Transfer]:
+
+    transfer = transfers_repository.get_transfer_by_transfer_id(transfer_id)
+        
+    if transfer is None:
         raise HTTPException(
             status_code = 404,
             detail = f"Transfer '{transfer_id}' not found"
         )
 
-    account_id = transfers_repository.get_transfer_by_transfer_id(transfer_id)["to_account_id"]
+    account_id = transfer["to_account_id"]
 
     if accounts_repository.get_balance_by_account_id(account_id) < transfers_repository.get_amount_by_transfer_id(transfer_id):
         raise HTTPException(

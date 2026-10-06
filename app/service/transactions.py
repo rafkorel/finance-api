@@ -1,12 +1,12 @@
 from fastapi import HTTPException
 
-from app.schemas.transactions import AddTransactionRequest
+from app.schemas.transactions import AddTransactionRequest, Transaction
 
 from app.repository import accounts as accounts_repository
 from app.repository import categories as categories_repository
 from app.repository import transactions as transactions_repository
 
-async def create_income(request: AddTransactionRequest) -> dict:
+async def create_income(request: AddTransactionRequest) -> Transaction:
 
     if not accounts_repository.is_account_id_exists(request.account_id):
         raise HTTPException(
@@ -30,7 +30,7 @@ async def create_income(request: AddTransactionRequest) -> dict:
 
     category_type = categories_repository.get_type_by_category_id(request.category_id)
 
-    return transactions_repository.create_transactions(
+    return transactions_repository.create_transaction(
         request.account_id,
         request.category_id,
         request.amount,
@@ -40,7 +40,7 @@ async def create_income(request: AddTransactionRequest) -> dict:
     )
 
 
-async def create_expense(request: AddTransactionRequest) -> dict:
+async def create_expense(request: AddTransactionRequest) -> Transaction:
 
     if not accounts_repository.is_account_id_exists(request.account_id):
         raise HTTPException(
@@ -70,7 +70,7 @@ async def create_expense(request: AddTransactionRequest) -> dict:
 
     category_type = categories_repository.get_type_by_category_id(request.category_id)
 
-    return transactions_repository.create_transactions(
+    return transactions_repository.create_transaction(
         request.account_id,
         request.category_id,
         request.amount,
@@ -80,30 +80,34 @@ async def create_expense(request: AddTransactionRequest) -> dict:
     )
 
 
-async def get_transactions() -> dict:
+async def get_transactions() -> dict[int, Transaction]:
     return transactions_repository.get_all_transactions()
 
 
-async def get_transaction(transaction_id: int) -> dict:
-    
-    if not transactions_repository.is_transaction_id_exists(transaction_id):
+async def get_transaction(transaction_id: int) -> Transaction:
+
+    transaction = transactions_repository.get_transaction_by_transaction_id(transaction_id)
+
+    if transaction is None:
         raise HTTPException(
             status_code = 404,
             detail = f"Transaction '{transaction_id}' not found"
         )
     
-    return transactions_repository.get_transaction_by_transaction_id(transaction_id)
+    return transaction
 
 
-async def delete_transaction(transaction_id: int) -> dict:
-        
-    if not transactions_repository.is_transaction_id_exists(transaction_id):
+async def delete_transaction(transaction_id: int) -> dict[str, Transaction]:
+
+    transaction = transactions_repository.get_transaction_by_transaction_id(transaction_id)
+
+    if transaction is None:
         raise HTTPException(
             status_code = 404,
             detail = f"Transaction '{transaction_id}' not found"
         )
-
-    account_id = transactions_repository.get_transaction_by_transaction_id(transaction_id)["account_id"]
+    
+    account_id = transaction["account_id"]
 
     if (
         transactions_repository.get_type_by_transaction_id(transaction_id) == 'income' 

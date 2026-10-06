@@ -1,5 +1,11 @@
 from pydantic import BaseModel, Field, field_validator
 
+from typing import TypedDict
+
+class Category(TypedDict):
+    category_id: int
+    name: str
+    type: str
 
 class AddCategoryRequest(BaseModel):
     name: str = Field(..., max_length=127)

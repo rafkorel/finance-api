@@ -1,16 +1,18 @@
 from datetime import date
 
-TRANSACTIONS = {}
+from app.schemas.transactions import Transaction
+
+TRANSACTIONS: dict[int, Transaction] = {}
 transaction_id = 0
 
-def create_transactions(
+def create_transaction(
         account_id : int,
         category_id: int,
         amount: float,
         description: str | None,
         date: date,
         category_type: str
-    ) -> dict:
+    ) -> Transaction:
 
     global transaction_id
     transaction_id += 1
@@ -28,22 +30,15 @@ def create_transactions(
     return TRANSACTIONS[transaction_id]
 
 
-def is_transaction_id_exists(transaction_id : int) -> bool:
-
-    if transaction_id not in TRANSACTIONS:
-        return False
-    return True
-
-
-def get_all_transactions() -> dict:
+def get_all_transactions() -> dict[int, Transaction]:
     return TRANSACTIONS.copy()
 
 
-def get_transaction_by_transaction_id(transaction_id : int) -> dict:
-    return TRANSACTIONS[transaction_id]
+def get_transaction_by_transaction_id(transaction_id : int) -> Transaction | None:
+    return TRANSACTIONS.get(transaction_id)
 
 
-def delete_transaction(transaction_id: int) -> dict:
+def delete_transaction(transaction_id: int) -> Transaction:
     
     return TRANSACTIONS.pop(transaction_id)
 
@@ -85,7 +80,7 @@ def is_category_type_exists_in_transactions(category_type: str) -> bool:
     return True
 
 
-def get_transactions_statistics_by_period(date_from: date, date_to: date) -> list:
+def get_transactions_statistics_by_period(date_from: date, date_to: date) -> list[Transaction]:
 
     result = []
     for transaction in TRANSACTIONS.values():

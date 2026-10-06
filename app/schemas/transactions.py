@@ -2,6 +2,17 @@ from pydantic import BaseModel, field_validator
 
 from datetime import date
 
+from typing import TypedDict
+
+class Transaction(TypedDict):
+    transaction_id: int
+    account_id: int
+    category_id: int
+    type: str
+    amount: float
+    description: str | None
+    date: date
+
 class AddTransactionRequest(BaseModel):
     account_id: int
     category_id: int

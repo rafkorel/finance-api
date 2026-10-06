@@ -1,12 +1,12 @@
 from fastapi import HTTPException
 
-from app.schemas.accounts import CreateAccountRequest
+from app.schemas.accounts import Account, CreateAccountRequest
 
 from app.repository import accounts as accounts_repository
 from app.repository import transactions as transactions_repository
 from app.repository import transfers as transfers_repository
 
-async def create_account(request: CreateAccountRequest) -> dict:
+async def create_account(request: CreateAccountRequest) -> Account:
 
     if not accounts_repository.is_account_exists(request.name):
         raise HTTPException(
@@ -21,22 +21,24 @@ async def create_account(request: CreateAccountRequest) -> dict:
     )
 
 
-async def get_accounts() -> dict:    
+async def get_accounts() -> dict[int, Account]:    
     return accounts_repository.get_all_accounts()
 
 
-async def get_account(account_id : int) -> dict:
+async def get_account(account_id : int) -> Account:
 
-    if not accounts_repository.is_account_id_exists(account_id):
+    account = accounts_repository.get_account_by_account_id(account_id)
+
+    if account is None:
         raise HTTPException(
             status_code = 404,
             detail = f"Account '{account_id}' not found"
         )
+    
+    return account
 
-    return accounts_repository.get_account_by_account_id(account_id)
 
-
-async def delete_account(account_id: int) -> dict:
+async def delete_account(account_id: int) -> dict[str, Account]:
     
     if not accounts_repository.is_account_id_exists(account_id):
         raise HTTPException(

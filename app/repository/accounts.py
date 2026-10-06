@@ -1,7 +1,9 @@
-ACCOUNTS = {}
+from app.schemas.accounts import Account
+
+ACCOUNTS: dict[int, Account] = {}
 account_id = 0
 
-def create_account(name: str, balance: float, currency: str) -> dict:
+def create_account(name: str, balance: float, currency: str) -> Account:
 
     global account_id
     account_id += 1
@@ -24,7 +26,7 @@ def is_account_exists(name: str) -> bool:
     return True
 
 
-def get_all_accounts() -> dict:
+def get_all_accounts() -> dict[int, Account]:
     return ACCOUNTS.copy()
 
 
@@ -35,11 +37,11 @@ def is_account_id_exists(account_id : int) -> bool:
     return True
 
 
-def get_account_by_account_id(account_id : int) -> dict:
-    return ACCOUNTS[account_id]
+def get_account_by_account_id(account_id : int) -> Account | None:
+    return ACCOUNTS.get(account_id)
 
 
-def delete_account(account_id: int) -> dict:
+def delete_account(account_id: int) -> dict[str, Account]:
     deleted_account = ACCOUNTS.pop(account_id)
     return {"deleted account": deleted_account}
 
@@ -67,7 +69,7 @@ def accounts_is_empty() -> bool:
     return ACCOUNTS == {}
 
 
-def get_all_balance() -> dict:
+def get_all_balance() -> dict[str, float | list[Account]]:
 
     total_balance = 0
     accounts = []

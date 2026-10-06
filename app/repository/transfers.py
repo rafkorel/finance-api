@@ -1,4 +1,6 @@
-TRANSFERS = {}
+from app.schemas.transfers import Transfer
+
+TRANSFERS: dict[int, Transfer] = {}
 transfer_id = 0
 
 def create_transfer(
@@ -6,7 +8,7 @@ def create_transfer(
         to_account_id: int,
         amount: float,
         description: str | None
-    ) -> dict:
+    ) -> Transfer:
 
     global transfer_id
     transfer_id += 1
@@ -22,7 +24,7 @@ def create_transfer(
     return TRANSFERS[transfer_id]
 
 
-def get_all_transfers() -> dict:
+def get_all_transfers() -> dict[int, Transfer]:
     return TRANSFERS.copy()
 
 
@@ -33,11 +35,11 @@ def is_transfer_id_exists(transfer_id : int) -> bool:
     return True
 
 
-def get_transfer_by_transfer_id(transfer_id : int) -> dict:
-    return TRANSFERS[transfer_id]
+def get_transfer_by_transfer_id(transfer_id : int) -> Transfer | None:
+    return TRANSFERS.get(transfer_id)
 
 
-def delete_transfer(transfer_id: int) -> dict:
+def delete_transfer(transfer_id: int) -> Transfer:
     return TRANSFERS.pop(transfer_id)
 
 

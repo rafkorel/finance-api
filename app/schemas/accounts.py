@@ -1,5 +1,12 @@
 from pydantic import BaseModel, Field, field_validator
 
+from typing import TypedDict
+
+class Account(TypedDict):
+    account_id: int
+    name: str
+    balance: float
+    currency: str
 
 class CreateAccountRequest(BaseModel):
     name: str = Field(..., max_length=127)

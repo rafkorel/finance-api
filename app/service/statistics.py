@@ -6,7 +6,11 @@ from app.repository import accounts as accounts_repository
 from app.repository import categories as categories_repository
 from app.repository import transactions as transactions_repository
 
-async def get_balance_statistics() -> dict:
+from app.schemas.accounts import Account
+from app.schemas.transactions import Transaction
+from app.schemas.statistics import CategoryStatistics
+
+async def get_balance_statistics() -> dict[str, float | list[Account]]:
 
     if accounts_repository.accounts_is_empty():
         raise HTTPException(
@@ -17,7 +21,7 @@ async def get_balance_statistics() -> dict:
     return accounts_repository.get_all_balance()
 
 
-async def get_categories_statistics(category_type: str) -> list:
+async def get_categories_statistics(category_type: str) -> list[CategoryStatistics]:
 
     if category_type not in ['income', 'expense']:
         raise HTTPException(
@@ -69,7 +73,7 @@ async def get_categories_statistics(category_type: str) -> list:
     return result
 
 
-async def get_transactions_statistics_by_period(date_from: date, date_to: date) -> list:
+async def get_transactions_statistics_by_period(date_from: date, date_to: date) -> list[Transaction]:
 
     if date_from > date_to:
         raise HTTPException(
