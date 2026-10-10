@@ -1,8 +1,13 @@
+from typing import TYPE_CHECKING
+
 from decimal import Decimal
 
 from app.models.base import Base
 
-from sqlalchemy.orm import Mapped, mapped_column
+if TYPE_CHECKING:
+    from app.models.transactions import Transaction
+
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from sqlalchemy import String, Numeric, Identity, CheckConstraint
 
@@ -33,4 +38,10 @@ class Account(Base):
         String(3),
         CheckConstraint("currency IN ('RUB', 'USD', 'EUR')", name='currency_check'),
         nullable=False
+    )
+
+
+    transactions: Mapped[list[Transaction]] = relationship(
+        "Transaction",
+        back_populates="account"
     )

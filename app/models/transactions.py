@@ -2,8 +2,10 @@ from decimal import Decimal
 from datetime import date
 
 from app.models.base import Base
+from app.models.categories import Category
+from app.models.accounts import Account
 
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from sqlalchemy import (
     ForeignKey,
@@ -52,4 +54,16 @@ class Transaction(Base):
     description: Mapped[str | None] = mapped_column(
         String(250),
         nullable=True
+    )
+
+
+    account: Mapped[Account] = relationship(
+        "Account",
+        back_populates="transactions"
+    )
+
+
+    category: Mapped[Category] = relationship(
+        "Category",
+        back_populates="transactions"
     )
