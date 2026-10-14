@@ -34,6 +34,15 @@ async def create_transfer(request: AddTransferRequest, session: AsyncSession) ->
             session
         )
 
+        if from_account.currency != to_account.currency:
+
+            await session.rollback()
+
+            raise HTTPException(
+                status_code=400,
+                detail="Transfers between accounts with different currencies are not supported"
+            )
+
         if from_account.balance < request.amount:
 
             await session.rollback()
