@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from sqlalchemy import String, Identity, CheckConstraint
+from sqlalchemy import String, Identity, CheckConstraint, UniqueConstraint
 
 class Category(Base):
     __tablename__ = "categories"
@@ -31,7 +31,15 @@ class Category(Base):
     )
 
 
-    transactions: Mapped[list[Transaction]] = relationship(
+    transactions: Mapped[list["Transaction"]] = relationship(
         "Transaction",
         back_populates="category"
+    )
+
+
+    __table_args__ = (
+        UniqueConstraint(
+            "name", "type",
+            name="unique_name_and_type"
+        ),
     )

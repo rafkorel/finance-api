@@ -1,15 +1,14 @@
 from pydantic import BaseModel, Field, field_validator
 
-from typing import TypedDict
-
-class Category(TypedDict):
-    category_id: int
-    name: str
-    type: str
-
 class AddCategoryRequest(BaseModel):
-    name: str = Field(..., max_length=127)
-    category_type: str = Field(..., max_length=7)
+    name: str = Field(
+        ...,
+        max_length=100
+    )
+    category_type: str = Field(
+        ...,
+        max_length=7
+    )
 
     @field_validator('name')
     def name_not_empty(cls, v: str) -> str:

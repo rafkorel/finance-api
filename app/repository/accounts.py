@@ -1,84 +1,164 @@
-from app.schemas.accounts import Account
+from decimal import Decimal
+from typing import Sequence
 
-ACCOUNTS: dict[int, Account] = {}
-account_id = 0
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-def create_account(name: str, balance: float, currency: str) -> Account:
+from app.models.accounts import Account
 
-    global account_id
-    account_id += 1
+async def create_account(name: str, balance: Decimal, currency: str, session: AsyncSession) -> Account:
 
-    ACCOUNTS[account_id] = {
-        "account_id": account_id,
-        "name": name,
-        "balance": balance,
-        "currency": currency,
-    }
+    account = Account(
+        name=name,
+        balance=Decimal(balance),
+        currency=currency
+    )
 
-    return ACCOUNTS[account_id]
+    session.add(account)
 
+    await session.commit()
+    await session.refresh(account)
 
-def is_account_exists(name: str) -> bool:
-
-    for account in ACCOUNTS.values():
-        if name == account["name"]:
-            return False
-    return True
+    return account
 
 
-def get_all_accounts() -> dict[int, Account]:
-    return ACCOUNTS.copy()
+async def is_account_exists(name: str, session: AsyncSession) -> bool:
 
+    query = select(Account).where(Account.name == name)
+    result = await session.execute(query)
+    accounts = result.scalar_one_or_none()
 
-def is_account_id_exists(account_id : int) -> bool:
-
-    if account_id not in ACCOUNTS:
+    if accounts is None:
         return False
     return True
 
 
-def get_account_by_account_id(account_id : int) -> Account | None:
-    return ACCOUNTS.get(account_id)
+async def get_all_accounts(session: AsyncSession) -> Sequence[Account]:
+
+    query = select(Account)
+    result = await session.execute(query)
+    return result.scalars().all()
 
 
-def delete_account(account_id: int) -> dict[str, Account]:
-    deleted_account = ACCOUNTS.pop(account_id)
-    return {"deleted account": deleted_account}
+async def get_account_by_account_id(account_id : int, session: AsyncSession) -> Account | None:
+
+    return await session.get(Account, account_id)
 
 
-def subtract_amount(account_id: int, amount: float) -> bool:
+async def delete_account(account_id: int, session: AsyncSession) -> dict[str, Account] | None:
 
-    if ACCOUNTS[account_id]['balance'] < amount:
+    account = await session.get(Account, account_id)
+
+    if account is None:
+        return None
+
+    await session.delete(account)
+    await session.flush()
+    return {"deleted account": account}
+
+
+async def is_account_id_exists(account_id: int, session: AsyncSession) -> bool:
+    
+    if await session.get(Account, account_id) is None:
         return False
     return True
 
 
-def get_balance_by_account_id(account_id: int) -> float:
+async def add_to_balance(account_id: int, amount: Decimal, session: AsyncSession) -> None:
 
-    return ACCOUNTS[account_id]["balance"]
+    query = select(Account).where(Account.account_id == account_id)
+    result = await session.execute(query)
+    account = result.scalar_one()
 
-def deduct_from_balance(account_id: int, amount: float) -> None:
-    ACCOUNTS[account_id]['balance'] -= amount
-
-
-def add_to_balance(account_id: int, amount: float) -> None:
-    ACCOUNTS[account_id]['balance'] += amount
+    account.balance += Decimal(amount)
+    await session.flush()
 
 
-def accounts_is_empty() -> bool:
-    return ACCOUNTS == {}
+async def subtract_amount(account_id: int, amount: Decimal, session: AsyncSession) -> bool:
+
+    query = select(Account).where(Account.account_id == account_id)
+    result = await session.execute(query)
+    account = result.scalar_one()
+
+    if account.balance < Decimal(amount):
+        return False
+    return True
 
 
-def get_all_balance() -> dict[str, float | list[Account]]:
+async def deduct_from_balance(account_id: int, amount: Decimal, session: AsyncSession) -> None:
 
-    total_balance = 0
-    accounts = []
-    for account in ACCOUNTS.values():
+    query = select(Account).where(Account.account_id == account_id)
+    result = await session.execute(query)
+    account = result.scalar_one()
 
-        total_balance += account['balance']
-        accounts.append(account)
+    account.balance -= Decimal(amount)
+    await session.flush()
 
+
+async def get_balance_by_account_id(account_id: int, session: AsyncSession) -> Decimal:
+
+    query = select(Account).where(Account.account_id == account_id)
+    result = await session.execute(query)
+    account = result.scalar_one()
+
+    return account.balance
+
+
+async def accounts_is_empty(session: AsyncSession) -> bool:
+
+    query = select(Account)
+    result = await session.execute(query)
+    accounts = result.scalars().all()
+
+    return accounts == []
+
+
+async def get_all_balance(session: AsyncSession) -> dict[str, Decimal | Sequence[Account]]:
+
+    total_balance = Decimal("0")
+
+    query = select(Account)
+    result = await session.execute(query)
+    accounts = result.scalars().all() 
+
+    for account in accounts:
+        total_balance += account.balance
     return {
         "total_balance": total_balance,
-        "accounts": accounts,
+        "accounts": accounts
     }
+
+
+async def get_account_for_update(
+    account_id: int,
+    session: AsyncSession
+) -> Account:
+
+    query = (
+        select(
+            Account
+        ).where(
+            Account.account_id == account_id
+        ).with_for_update().execution_options(populate_existing=True)
+    )
+    
+    result = await session.execute(query)
+
+    return result.scalar_one()
+
+
+async def get_accounts_for_update(
+    from_account_id: int,
+    to_account_id: int,
+    session: AsyncSession
+) -> tuple[Account, Account]:
+
+    sort_ids = sorted((from_account_id, to_account_id))
+
+    account_1 = await get_account_for_update(sort_ids[0], session)
+    account_2 = await get_account_for_update(sort_ids[1], session)
+
+    if account_1.account_id == from_account_id:
+        return account_1, account_2
+    else:
+        return account_2, account_1

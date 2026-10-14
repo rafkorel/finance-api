@@ -24,6 +24,7 @@ class Account(Base):
     name: Mapped[str] = mapped_column(
         String(100),
         nullable=False,
+        unique=True,
     )
 
 
@@ -41,7 +42,7 @@ class Account(Base):
     )
 
 
-    transactions: Mapped[list[Transaction]] = relationship(
+    transactions: Mapped[list["Transaction"]] = relationship(
         "Transaction",
         back_populates="account"
     )

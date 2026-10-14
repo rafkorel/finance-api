@@ -1,17 +1,21 @@
+from decimal import Decimal
+
 from pydantic import BaseModel, Field, field_validator
 
-from typing import TypedDict
-
-class Account(TypedDict):
-    account_id: int
-    name: str
-    balance: float
-    currency: str
-
 class CreateAccountRequest(BaseModel):
-    name: str = Field(..., max_length=127)
-    balance: float
-    currency: str = Field(..., max_length=3)
+    name: str = Field(
+        ...,
+        max_length=100
+    )
+    balance: Decimal = Field(
+        ge=0,
+        max_digits=12,
+        decimal_places=2
+    )
+    currency: str = Field(
+        ...,
+        max_length=3
+    )
 
     @field_validator('name')
     def name_not_empty(cls, v: str) -> str:
@@ -21,14 +25,6 @@ class CreateAccountRequest(BaseModel):
         if not v:
             raise ValueError("Account name cannot be empty")
 
-        return v
-
-    @field_validator('balance')
-    def balance_not_negative(cls, v: float) -> float:
-
-        if v < 0:
-            raise ValueError("Initial balance cannot be negative")
-                
         return v
 
     @field_validator('currency')

@@ -1,90 +1,158 @@
 from datetime import date
+from decimal import Decimal
+from typing import Sequence
 
-from app.schemas.transactions import Transaction
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
-TRANSACTIONS: dict[int, Transaction] = {}
-transaction_id = 0
+from app.models.transactions import Transaction
 
-def create_transaction(
+async def create_transaction(
         account_id : int,
         category_id: int,
-        amount: float,
+        amount: Decimal,
         description: str | None,
         date: date,
-        category_type: str
+        session: AsyncSession
     ) -> Transaction:
 
-    global transaction_id
-    transaction_id += 1
+    transaction = Transaction(
+        account_id = account_id,
+        category_id = category_id,
+        amount = amount,
+        description = description,
+        date = date,
+    )
 
-    TRANSACTIONS[transaction_id] ={
-        "transaction_id": transaction_id,
-        "account_id": account_id,
-        "category_id": category_id,
-        "type": category_type,
-        "amount": amount,
-        "description": description,
-        "date": date,
-    }
+    session.add(transaction)
 
-    return TRANSACTIONS[transaction_id]
+    await session.flush()
 
-
-def get_all_transactions() -> dict[int, Transaction]:
-    return TRANSACTIONS.copy()
+    return transaction
 
 
-def get_transaction_by_transaction_id(transaction_id : int) -> Transaction | None:
-    return TRANSACTIONS.get(transaction_id)
+async def get_all_transactions(session: AsyncSession) -> Sequence[Transaction]:
+
+    query = select(Transaction)
+    result = await session.execute(query)
+    return result.scalars().all()
 
 
-def delete_transaction(transaction_id: int) -> Transaction:
+async def get_transaction_by_transaction_id(transaction_id : int, session) -> Transaction | None:
+
+    return await session.get(Transaction, transaction_id)
+
+
+async def delete_transaction(transaction: Transaction, session: AsyncSession) -> dict[str, Transaction]:
+
+    await session.delete(transaction)
+    await session.flush()
     
-    return TRANSACTIONS.pop(transaction_id)
+    return {"deleted transaction": transaction}
 
 
-def get_type_by_transaction_id(transaction_id: int) -> str:
-    return TRANSACTIONS[transaction_id]['type']
+async def get_type_by_transaction_id(transaction_id: int, session: AsyncSession) -> str:
+
+    query = select(
+        Transaction
+    ).options(
+        selectinload(
+            Transaction.category
+        )
+    ).where(
+        Transaction.transaction_id == transaction_id
+    )
+    result = await session.execute(query)
+    transaction = result.scalar_one()
+
+    return transaction.category.type
 
 
-def get_amount_by_transaction_id(transaction_id: int) -> float:
-    return TRANSACTIONS[transaction_id]['amount']
+async def get_amount_by_transaction_id(transaction_id: int, session: AsyncSession) -> Decimal:
+
+    query = select(Transaction).where(Transaction.transaction_id == transaction_id)
+    result = await session.execute(query)
+    transaction = result.scalar_one()
+
+    return transaction.amount
 
 
-def is_account_id_exists_in_transactions(account_id : int) -> bool:
+async def is_account_id_exists_in_transactions(account_id : int, session: AsyncSession) -> bool:
 
-    for transaction in TRANSACTIONS.values():
-        if transaction["account_id"] == account_id:
-            return False
-    return True
+    query = select(Transaction).where(Transaction.account_id == account_id)
+    result = await session.execute(query)
+    transaction = result.scalars().all()
 
-
-def is_category_id_exists_in_transactions(category_id: int) -> bool:
-        
-    for transaction in TRANSACTIONS.values():
-        if transaction['category_id'] == category_id:
-            return False
-    return True
-
-
-def transactions_is_empty() -> bool:
-    return TRANSACTIONS == {}
-
-
-def is_category_type_exists_in_transactions(category_type: str) -> bool:
-    if not any(
-    transaction['type'] == category_type
-    for transaction in TRANSACTIONS.values()
-    ):
+    if transaction == []:
         return False
     return True
 
 
-def get_transactions_statistics_by_period(date_from: date, date_to: date) -> list[Transaction]:
+async def is_category_id_exists_in_transactions(category_id: int, session: AsyncSession) -> bool:
 
-    result = []
-    for transaction in TRANSACTIONS.values():
-        if date_from <= transaction['date'] <= date_to:
-            result.append(transaction)
+    query = select(Transaction).where(Transaction.category_id == category_id)
+    result = await session.execute(query)
+    transaction = result.scalars().all()
 
-    return result
+    if transaction == []:
+        return False
+    return True
+
+
+async def transactions_is_empty(session: AsyncSession) -> bool:
+
+    query = select(Transaction)
+    result = await session.execute(query)
+    transactions = result.scalars().all()
+
+    return transactions == []
+
+
+async def is_category_type_exists_in_transactions(category_type: str, session: AsyncSession) -> bool:
+
+    query = select(Transaction).options(selectinload(Transaction.category))
+    result = await session.execute(query)
+    transactions = result.scalars().all()
+
+    return any(
+        transaction.category.type == category_type
+        for transaction in transactions
+    )
+
+
+async def get_transactions_statistics_by_period(date_from: date, date_to: date, session: AsyncSession) -> Sequence[Transaction]:
+
+    query = select(Transaction).where(Transaction.date >= date_from, Transaction.date <= date_to)
+    result = await session.execute(query)
+
+    return result.scalars().all()
+
+
+async def get_transactions_statistics(session: AsyncSession) -> Sequence[Transaction]:
+
+    query = select(Transaction).options(selectinload(Transaction.category))
+    result = await session.execute(query)
+    return result.scalars().all()
+
+
+async def get_transaction_for_update(
+        transaction_id: int,
+        session: AsyncSession
+) -> Transaction | None:
+
+    query = (
+        select(
+            Transaction
+        ).options(
+            selectinload(
+                Transaction.category
+            )
+        ).where(
+            Transaction.transaction_id == transaction_id
+        ).with_for_update().execution_options(populate_existing=True)
+    )
+    
+    result = await session.execute(query)
+
+    return result.scalar_one_or_none()

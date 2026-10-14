@@ -1,27 +1,18 @@
-from pydantic import BaseModel, field_validator
+from decimal import Decimal
 
+from pydantic import BaseModel, Field
 from datetime import date
-
-from typing import TypedDict
-
-class Transaction(TypedDict):
-    transaction_id: int
-    account_id: int
-    category_id: int
-    type: str
-    amount: float
-    description: str | None
-    date: date
 
 class AddTransactionRequest(BaseModel):
     account_id: int
     category_id: int
-    amount: float
-    description: str | None = None
+    amount: Decimal = Field(
+        gt=0,
+        max_digits=12,
+        decimal_places=2
+    )
+    description: str | None = Field(
+        None,
+        max_length=250
+    )
     date: date
-
-    @field_validator('amount')
-    def validate_amount(cls, v: float) -> float:
-        if v <= 0:
-            raise ValueError('Amount must be positive')
-        return v
