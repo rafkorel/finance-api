@@ -43,9 +43,49 @@ class Transfer(Base):
     )
 
 
+    credited_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2),
+        CheckConstraint("credited_amount > 0", name='credited_amount_check'),
+        nullable=False
+    )
+
+
+    from_currency: Mapped[str] = mapped_column(
+        String(3),
+        CheckConstraint("from_currency IN ('RUB', 'USD', 'EUR')", name='from_currency_check'),
+        nullable=False
+    )
+
+
+    to_currency: Mapped[str] = mapped_column(
+        String(3),
+        CheckConstraint("to_currency IN ('RUB', 'USD', 'EUR')", name='to_currency_check'),
+        nullable=False
+    )
+
+
+    exchange_rate: Mapped[Decimal] = mapped_column(
+        Numeric(24, 12),
+        CheckConstraint("exchange_rate > 0", name="exchange_rate_check"),
+        nullable=False
+    )
+
+
     date: Mapped[date] = mapped_column(
         Date(),
         nullable=False
+    )
+
+
+    rate_date: Mapped[date | None] = mapped_column(
+        Date(),
+        nullable=True
+    )
+
+
+    rate_source: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True
     )
 
 

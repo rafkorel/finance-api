@@ -11,6 +11,12 @@ async def create_transfer(
         from_account_id: int,
         to_account_id: int,
         amount: Decimal,
+        credited_amount: Decimal,
+        from_currency: str,
+        to_currency: str,
+        exchange_rate: Decimal,
+        rate_date: date | None,
+        rate_source: str | None,
         description: str | None,
         session: AsyncSession
     ) -> Transfer:
@@ -19,6 +25,12 @@ async def create_transfer(
         from_account_id = from_account_id,
         to_account_id = to_account_id,
         amount = amount,
+        credited_amount=credited_amount,
+        from_currency=from_currency,
+        to_currency=to_currency,
+        exchange_rate=exchange_rate,
+        rate_date=rate_date,
+        rate_source=rate_source,
         description = description,
         date = date.today()
     )
