@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import date
 
 class AddTransactionRequest(BaseModel):
@@ -16,3 +16,16 @@ class AddTransactionRequest(BaseModel):
         max_length=250
     )
     date: date
+    currency: str | None = Field(
+        default=None,
+        max_length=3
+    )
+
+    @field_validator('currency')
+    def validate_currency(cls, v: str | None) -> str | None:
+
+        if v is not None:
+            if v not in ["RUB", "EUR", "USD"]:
+                raise ValueError("Currency must be one of RUB, USD, EUR")
+
+        return v

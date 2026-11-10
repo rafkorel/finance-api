@@ -12,6 +12,12 @@ async def create_transaction(
         account_id : int,
         category_id: int,
         amount: Decimal,
+        account_amount: Decimal,
+        currency: str,
+        account_currency: str,
+        exchange_rate: Decimal,
+        rate_date: date | None,
+        rate_source: str | None,
         description: str | None,
         date: date,
         session: AsyncSession
@@ -21,14 +27,19 @@ async def create_transaction(
         account_id = account_id,
         category_id = category_id,
         amount = amount,
+        account_amount=account_amount,
+        currency = currency,
+        account_currency = account_currency,
+        exchange_rate = exchange_rate,
+        rate_date = rate_date,
+        rate_source = rate_source,
         description = description,
         date = date,
     )
 
     session.add(transaction)
-
     await session.flush()
-
+    
     return transaction
 
 
