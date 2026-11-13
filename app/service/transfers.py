@@ -99,6 +99,14 @@ async def create_transfer(request: AddTransferRequest, session: AsyncSession) ->
             detail="Database operation failed"
         )
 
+    except ValueError as exc:
+
+        await session.rollback()
+
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc)
+        )
 
 async def get_transfers(session: AsyncSession) -> Sequence[Transfer]:
     return await transfers_repository.get_all_transfers(session)

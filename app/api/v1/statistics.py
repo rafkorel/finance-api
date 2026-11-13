@@ -11,16 +11,17 @@ from app.service import statistics as statistics_service
 router = APIRouter()
 
 @router.get("/statistics/balance")
-async def get_balance_statistics(session: AsyncSession = Depends(get_session)):
-    return await statistics_service.get_balance_statistics(session)
+async def get_balance_statistics(session: AsyncSession = Depends(get_session), currency: str | None = None):
+    return await statistics_service.get_balance_statistics(currency, session)
 
 
 @router.get("/statistics/categories")
 async def get_categories_statistics(
     category_type: str = Query(..., max_length=7),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    currency: str | None = None
 ):
-    return await statistics_service.get_categories_statistics(category_type, session)
+    return await statistics_service.get_categories_statistics(category_type, currency, session)
 
 
 @router.get("/statistics/period")

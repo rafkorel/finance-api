@@ -97,6 +97,15 @@ async def create_income(request: AddTransactionRequest, session: AsyncSession) -
             detail = "Database operation failed"
         )
 
+    except ValueError as exc:
+
+        await session.rollback()
+
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc)
+        )
+
 
 async def create_expense(request: AddTransactionRequest, session: AsyncSession) -> Transaction:
 
@@ -151,7 +160,7 @@ async def create_expense(request: AddTransactionRequest, session: AsyncSession) 
                 detail="The account currency type has been changed"
             )
 
-        if account.balance < Decimal(account_amount):
+        if account.balance < account_amount:
 
             await session.rollback()
 
@@ -186,6 +195,15 @@ async def create_expense(request: AddTransactionRequest, session: AsyncSession) 
         raise HTTPException(
             status_code=500,
             detail = "Database operation failed"
+        )
+
+    except ValueError as exc:
+
+        await session.rollback()
+
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc)
         )
 
 
