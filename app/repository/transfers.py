@@ -78,15 +78,6 @@ async def is_account_id_exists_in_transfers(account_id : int, session: AsyncSess
     return True
 
 
-async def get_amount_by_transfer_id(transfer_id: int, session: AsyncSession) -> Decimal:
-
-    query = select(Transfer).where(Transfer.transfer_id == transfer_id)
-    result = await session.execute(query)
-    transfer = result.scalar_one()
-
-    return transfer.amount
-
-
 async def get_transfer_for_update(
         transfer_id: int,
         session: AsyncSession

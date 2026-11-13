@@ -80,21 +80,3 @@ async def type_check_expense(category_id: int, session: AsyncSession) -> bool:
     if category.type != 'expense':
         return False
     return True
-
-
-async def categories_is_empty(session: AsyncSession) -> bool:
-
-    query = select(Category)
-    result = await session.execute(query)
-    categories = result.scalars().all()
-
-    return categories == []
-
-
-async def get_category_name_by_id(category_id: int, session: AsyncSession) -> str:
-
-    query = select(Category).where(Category.category_id == category_id)
-    result = await session.execute(query)
-    category = result.scalar_one()
-
-    return category.name

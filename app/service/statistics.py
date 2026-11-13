@@ -6,7 +6,6 @@ from fastapi import HTTPException
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.accounts import Account
 from app.models.transactions import Transaction
 
 from app.repository import accounts as accounts_repository

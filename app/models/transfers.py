@@ -1,5 +1,5 @@
 from decimal import Decimal
-from datetime import date
+from datetime import date as DateType
 
 from app.models.base import Base
 
@@ -71,13 +71,13 @@ class Transfer(Base):
     )
 
 
-    date: Mapped[date] = mapped_column(
+    date: Mapped[DateType] = mapped_column(
         Date(),
         nullable=False
     )
 
 
-    rate_date: Mapped[date | None] = mapped_column(
+    rate_date: Mapped[DateType | None] = mapped_column(
         Date(),
         nullable=True
     )
