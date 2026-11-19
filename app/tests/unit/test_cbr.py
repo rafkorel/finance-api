@@ -28,7 +28,7 @@ def cbr_xml():
     return xml_data
 
 
-def test_parse_cbr_rates_xml_returns_date_and_rates(cbr_xml):
+def test_reads_date_and_rates(cbr_xml):
 
     date, rates = parse_cbr_rates_xml(cbr_xml)
 
@@ -37,7 +37,7 @@ def test_parse_cbr_rates_xml_returns_date_and_rates(cbr_xml):
     assert rates["EUR"] == Decimal("100.5")
 
 
-def test_parse_cbr_rates_xml_missing_eur(cbr_xml):
+def test_missing_eur(cbr_xml):
 
     cbr_xml = cbr_xml.replace("EUR", "GBP")
 

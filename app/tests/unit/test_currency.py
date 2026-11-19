@@ -4,7 +4,7 @@ import pytest
 
 from app.service.currency import convert_currency
 
-def test_convert_currency_usd_to_eur():
+def test_usd_to_eur():
 
     amount = Decimal("10")
     from_currency = "USD"
@@ -27,7 +27,7 @@ def test_convert_currency_usd_to_eur():
             (Decimal("100.51"), Decimal("1.01"))
         ],
 )
-def test_convert_currency_rounds_half_up(amount, expected):
+def test_rounds_half_up(amount, expected):
 
     from_currency = "RUB"
     to_currency = "USD"
@@ -41,7 +41,7 @@ def test_convert_currency_rounds_half_up(amount, expected):
     assert result == expected
 
 
-def test_convert_currency_rejects_missing_target_rate():
+def test_missing_target_rate():
 
     amount = Decimal("10")
     from_currency = "USD"
@@ -53,5 +53,3 @@ def test_convert_currency_rejects_missing_target_rate():
     with pytest.raises(ValueError):
 
         convert_currency(amount, from_currency, to_currency, rates)
-
-
