@@ -1,0 +1,15 @@
+name: Runner check
+
+on:
+  push:
+    branches:
+      - test/pytest-ci
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show kernel
+        run: uname -s
+      - name: Show folder
+        run: pwd
