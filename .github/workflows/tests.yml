@@ -11,14 +11,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Show kernel
-        run: uname -s
 
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Show folder
-        run: pwd
-    
-      - name: Show files
-        run: ls -la
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+
+      - name: Show Python version
+        run: python --version
