@@ -6,10 +6,19 @@ on:
       - test/pytest-ci
 
 jobs:
+
   check:
     runs-on: ubuntu-latest
+
     steps:
       - name: Show kernel
         run: uname -s
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
       - name: Show folder
         run: pwd
+    
+      - name: Show files
+        run: ls -la
