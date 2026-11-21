@@ -10,6 +10,25 @@ jobs:
   check:
     runs-on: ubuntu-latest
 
+    services:
+
+      postgres:
+        image: postgres:18
+
+        env:
+          POSTGRES_USER: finance_test
+          POSTGRES_PASSWORD: finance_test
+          POSTGRES_DB: finance_api_test
+          
+        ports:
+          - '5432:5432'
+
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U finance_test -d finance_api_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
 
       - name: Checkout repository
