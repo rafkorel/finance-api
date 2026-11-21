@@ -6,7 +6,11 @@ from app.api.v1.transactions import router as transactions_router
 from app.api.v1.transfers import router as transfers_router
 from app.api.v1.statistics import router as statistics_router
 
-app = FastAPI()
+app = FastAPI(
+    title="Finance API",
+    description="REST API for personal finance management",
+    version="1.0.0",
+)
 
 app.include_router(
     accounts_router,
