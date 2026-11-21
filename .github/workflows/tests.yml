@@ -49,5 +49,5 @@ jobs:
       - name: Apply database migrations
         run: python -m alembic upgrade head
 
-      - name: Run unit tests
-        run: python -m pytest app/tests/unit
+      - name: Run tests
+        run: python -m pytest app/tests -v
