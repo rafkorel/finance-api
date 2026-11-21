@@ -1,9 +1,16 @@
-name: Runner check
+name: Finance API CI
 
 on:
+
   push:
     branches:
       - test/pytest-ci
+      - main
+
+  pull_request:
+    branches:
+      - main
+
 
 jobs:
 
